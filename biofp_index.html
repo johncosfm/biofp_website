@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Bioshock: Fall of Rapture</title>
+		<link rel="icon" type="image/x-icon" href="https://i.imgur.com/fjEwBqv.png">
+		<style>
+			:root {
+				/* texture assets (got some errors relating to cross origin requests, so had to host some of the assets on imgur) */
+				--tex_bg_base: url("https://i.imgur.com/3npFGGo.png");
+				--tex_bg_caustic: url("https://i.imgur.com/SxKg2kE.png");
+				--tex_bg_caustic_mask: url("https://i.imgur.com/W7cAQXt.png");
+				--tex_bg_drips: url("https://i.imgur.com/Rm0tfwr.png");
+				--tex_bg_drips_mask: url("https://i.imgur.com/zRGi0fI.png");
+				--tex_bg_volumetric: url("https://i.imgur.com/tFKHnFY.png");
+				--tex_bg_volumetric_mask: url("https://i.imgur.com/GOhCKdk.png");
+				--tex_global_logo: url("https://i.imgur.com/Yy0Nwr3.png");
+				
+				--color_off_white: #faf3d2;
+				--color_dull_white:#d2d0c4;
+				--color_bluegreen: #09e3c2;
+				--color_greenblue: #09e397;
+				--color_accent_red:#a31208;
+				
+				/* globals */
+				--mask_scale_factor: 1;
+				--font_scale_factor: 1;
+			}
+			
+			@font-face {
+				font-family: jakob;
+				src: url("assets/font_jakob.ttf");
+			}
+			@font-face {
+				font-family: jakobSC;
+				src: url("assets/font_jakobSC.ttf");
+			}
+			@font-face {
+				font-family: typewriter;
+				src: url("assets/font_typewriter.ttf");
+			}
+			
+			@keyframes anim_mask_scroll_x { /* requires --mask-size and --mask_scale_factor var */
+				0% {
+					-webkit-mask-position-x: 0;
+					mask-position: 0 0;
+				}
+				100% {
+					-webkit-mask-position-x: var(--mask_size);
+					mask-position: var(--mask_size) 0;
+				}
+			}
+			@keyframes anim_mask_scroll_y { /* requires --mask-size and --mask_scale_factor var */
+				0% {
+					-webkit-mask-position-y: 0;
+					mask-position: 0 0;
+				}
+				100% {
+					-webkit-mask-position-y: var(--mask_size);
+					mask-position: var(--mask_size) 0;
+				}
+			}
+			@keyframes anim_opacity_flash {
+				0% {
+					opacity: 1;
+				}
+				50% {
+					opacity: 0;
+				}
+				100% {
+					opacity: 1;
+				}
+			}
+			@keyframes anim_opacity_flash_half {
+				0% {
+					opacity: 1;
+				}
+				50% {
+					opacity: 0.5;
+				}
+				100% {
+					opacity: 1;
+				}
+			}
+			@keyframes anim_fade_in {
+				0% {
+					opacity: 0;
+				}
+				100% {
+					opacity: 1;
+				}
+			}
+			@keyframes anim_fade_out {
+				0% {
+					opacity: 1;
+				}
+				100% {
+					opacity: 0;
+				}
+			}
+			
+			div.fullpage {
+				background-color: black;
+				
+				position:fixed;
+				padding:0;
+				margin:0;
+				top:0;
+				left:0;
+				width: 100%;
+				height: 100%;
+			}
+			div.content_top {
+				background-color: unset;
+				width: calc(100vw - (10vw + 96px));
+				left: calc(5vw + 48px);
+				top: calc(2vw + 37.5px);
+				height:unset;
+			}
+			div.content {
+				background-color: unset;
+				width: calc(100vw - (10vw + 96px));
+				left: calc(5vw + 48px);
+				top: calc(2vw + 170px);
+			}
+			
+			/* animated background effects */
+			div.background {
+				background-repeat: no-repeat;
+				background-attachment: local;
+				background-position: 40% 50%;
+				background-size: cover;
+			}
+			div.background#bg_layer_base {
+				background-image: var(--tex_bg_base);
+			}
+			div.background#bg_layer_caustics_01 { /* main light masked layer 1 */
+				background-image: var(--tex_bg_caustic);
+				mix-blend-mode: screen;
+				
+				--mask_size: calc(512px * var(--mask_scale_factor));
+				mask-image: var(--tex_bg_caustic_mask);
+				-webkit-mask-image: var(--tex_bg_caustic_mask);
+ 				mask-repeat: repeat;
+				-webkit-mask-repeat: repeat;
+				mask-size: var(--mask_size);
+				-webkit-mask-size: var(--mask_size);
+				mask-position: 0 0;
+				-webkit-mask-position: 0 0;
+				animation: anim_mask_scroll_x 20s linear reverse infinite, anim_mask_scroll_y 15s linear reverse infinite;
+			}
+			div.background#bg_layer_caustics_02 { /* main light masked layer 2 */
+				background-image: var(--tex_bg_caustic);
+				mix-blend-mode: screen;
+				
+				--mask_size: calc(1024px * var(--mask_scale_factor));
+				mask-image: var(--tex_bg_caustic_mask);
+				-webkit-mask-image: var(--tex_bg_caustic_mask);
+ 				mask-repeat: repeat;
+				-webkit-mask-repeat: repeat;
+				mask-size: var(--mask_size);
+				-webkit-mask-size: var(--mask_size);
+				mask-position: 0 0;
+				-webkit-mask-position: 0 0;
+				animation: anim_mask_scroll_x 17s linear infinite, anim_mask_scroll_y 10s linear infinite, anim_opacity_flash_half 5s infinite;
+			}
+			div.background#bg_layer_caustics_03 { /* main light fill layer */
+				background-image: var(--tex_bg_caustic);
+				mix-blend-mode: screen;
+				opacity: 0.7;
+			}
+			div.background#bg_layer_drips_01 { /* drips masked layer */
+				background-image: var(--tex_bg_drips);
+				mix-blend-mode: screen;
+				
+				--mask_size: calc(3000px * var(--mask_scale_factor));
+				mask-image: var(--tex_bg_drips_mask);
+				-webkit-mask-image: var(--tex_bg_drips_mask);
+ 				mask-repeat: repeat;
+				-webkit-mask-repeat: repeat;
+				mask-size: var(--mask_size);
+				-webkit-mask-size: calc(var(--mask_size) / 8) var(--mask_size);
+				mask-position: 0 0;
+				-webkit-mask-position: 0 0;
+				animation: anim_mask_scroll_y 2s linear infinite, anim_opacity_flash 1.2s infinite;
+			}
+			div.background#bg_layer_fade_01 {
+				opacity: 1;
+				--on_load_animation: anim_fade_out 3s forwards;
+			}
+			div.background#bg_layer_volumetrics_01 { /* volumetric masked layer 1 */
+				background-image: var(--tex_bg_volumetric);
+				mix-blend-mode: screen;
+				opacity: 0.8;
+				
+				--mask_size: calc(1024px * var(--mask_scale_factor));
+				mask-image: var(--tex_bg_volumetric_mask);
+				-webkit-mask-image: var(--tex_bg_volumetric_mask);
+ 				mask-repeat: repeat;
+				-webkit-mask-repeat: repeat;
+				mask-size: var(--mask_size);
+				-webkit-mask-size: var(--mask_size);
+				mask-position: 0 0;
+				-webkit-mask-position: 0 0;
+				animation: anim_mask_scroll_x 100s linear reverse infinite, anim_mask_scroll_y 60s linear reverse infinite;
+			}
+			div.background#bg_layer_volumetrics_02 { /* volumetric masked layer 2 */
+				background-image: var(--tex_bg_volumetric);
+				mix-blend-mode: screen;
+				opacity: 0.8;
+				
+				--mask_size: calc(2048px * var(--mask_scale_factor));
+				mask-image: var(--tex_bg_volumetric_mask);
+				-webkit-mask-image: var(--tex_bg_volumetric_mask);
+ 				mask-repeat: repeat;
+				-webkit-mask-repeat: repeat;
+				mask-size: var(--mask_size);
+				-webkit-mask-size: var(--mask_size);
+				mask-position: 0 0;
+				-webkit-mask-position: 0 0;
+				animation: anim_mask_scroll_x 60s linear reverse infinite, anim_mask_scroll_y 100s linear infinite;
+			}
+			div.background#bg_layer_volumetrics_03 { /* volumetric fill layer */
+				background-image: var(--tex_bg_volumetric);
+				opacity: 0.4;
+				mix-blend-mode: screen;
+			}
+			div.background#bg_layer_fade_02 {
+				opacity: 1;
+				--on_load_animation: anim_fade_out 1s forwards;
+			}
+			div.background#bg_layer_loading {
+				background-color: unset;
+				opacity: 0;
+				color: var(--color_off_white);
+				line-height: 100vh;
+				text-align: center;
+				animation: anim_fade_in 3s 3s forwards;
+				--on_load_animation: anim_fade_out 0s forwards;
+			}
+			div#container_bg>div.background#bg_layer_dimmer {
+				opacity: 0;
+				transition: opacity 1000ms;
+			}
+			div.dull#container_bg>div.background#bg_layer_dimmer {
+				opacity: 0.3;
+			}
+			
+			/* global page elements */
+			img#global_logo {
+				--logo_scale: 1;
+				content: var(--tex_global_logo);
+				width: calc((13vw + 100px) * var(--logo_scale));
+				max-width: calc(350px * var(--logo_scale));
+				height: auto;
+				opacity: 0;
+				--on_load_animation: anim_fade_in 0.8s forwards;
+				transition: width 600ms, max-width 600ms;
+			}
+			ul#global_navbar>li.global_navbar_logo>a.active#global_navbar_link_home>img#global_logo {
+				cursor: pointer;
+				--logo_scale: 0.78;
+			}
+			ul#global_navbar {
+				padding:0;
+				margin:0;
+			}
+			ul#global_navbar>li.global_navbar_logo {
+				display: inline;
+			}
+			ul#global_navbar>li.global_navbar_link {
+				display: inline-block;
+				font-family: jakobSC;
+				color: var(--color_off_white);
+				vertical-align: top;
+				margin: 24px;
+				margin-top: 14px;
+				float: right;
+				font-size: calc(30px * var(--font_scale_factor));
+				cursor: pointer;
+				text-decoration-thickness: 0px;
+			}
+			ul#global_navbar>li.global_navbar_link>a#global_navbar_link_about {
+				--on_load_animation: anim_fade_in 1s forwards;
+			}
+			ul#global_navbar>li.global_navbar_link>a#global_navbar_link_devblogs {
+				--on_load_animation: anim_fade_in 1.2s forwards;
+			}
+			ul#global_navbar>li.global_navbar_link>a#global_navbar_link_community {
+				--on_load_animation: anim_fade_in 1.4s forwards;
+			}
+			ul#global_navbar>li.global_navbar_link>a {
+				display: block;
+				opacity: 0;
+				position: relative;
+				padding: 0.2em 0;
+				transition: color 400ms;
+			}
+			ul#global_navbar>li.global_navbar_link>a::after {
+				content: '';
+				position: absolute;
+				bottom: 0;
+				left: 0;
+				width: 100%;
+				height: 0.1em;
+				background-color: var(--color_off_white);
+				opacity: 0;
+				transform: translate3d(0, -8px, 0);
+				transition: opacity 100ms, transform 70ms;
+			}
+			ul#global_navbar>li.global_navbar_link>a:hover::after,
+			ul#global_navbar>li.global_navbar_link>a:focus::after {
+				opacity: 1;
+				transform: translate3d(0, -3px, 0);
+				color: var(--color_off_white);
+			}
+			ul#global_navbar>li.global_navbar_link>a.active::after {
+				opacity: 1;
+				transform: translate3d(0, -5px, 0);
+				color: var(--color_off_white);
+			}
+			ul#global_navbar>li.global_navbar_link>a.active:hover::after,
+			ul#global_navbar>li.global_navbar_link>a.active:focus::after {
+				opacity: 1;
+				transform: translate3d(0, -3px, 0);
+				color: var(--color_off_white);
+			}
+			ul#global_navbar>li.global_navbar_link>a.waitingfordebounce::after {
+				opacity: 1;
+				transform: translate3d(0, -6px, 0);
+				color: var(--color_off_white);
+			}
+			ul#global_navbar>li.global_navbar_link>a.waitingfordebounce:hover::after,
+			ul#global_navbar>li.global_navbar_link>a.waitingfordebounce:focus::after {
+				opacity: 1;
+				transform: translate3d(0, -6px, 0);
+				color: var(--color_off_white);
+			}
+			
+			/* about me */
+			div#container_about>article>h1 {
+				color: var(--color_off_white);
+				font-family: jakobSC;
+				text-align: center;
+				font-size: calc(43px * var(--font_scale_factor));
+				font-weight: normal;
+				margin-bottom: 10px;
+			}
+			div#container_about>article>hr {
+				width:calc(((53% * 0.4) + 350px) * var(--font_scale_factor));
+				max-width: 100%;
+				border-top: 3px solid var(--color_off_white);
+				border-radius: 2px;
+			}
+			div#container_about>article>p {
+				color: var(--color_off_white);
+				font-family: typewriter;
+				font-size: 20px;
+				width: calc((53% * 0.5) + 430px + (100px - (100px * var(--font_scale_factor))));
+				max-width: 90%;
+				text-align: justify;
+				margin:auto;
+				margin-top: 20px;
+			}
+			div#container_about>article>p#about_article_apply_note {
+				text-align: center;
+				font-family: jakob;
+				font-size: 25px;
+				width: calc(((50% * 0.5) + 320px) * var(--font_scale_factor));
+				max-width: 400px;
+			}
+			div#container_about>article>p#about_article_apply_note>a {
+				color: var(--color_bluegreen);
+				cursor: pointer;
+			}
+		</style>
+		<script>
+			var currentpage = "main" //main, community, devblogs, devblogselect, about
+			
+			function OnLoad() {
+				//handle on page load animations
+				var elements = document.getElementsByTagName("*");
+				for(let i = 0; i < elements.length; i++){
+					if (getComputedStyle(elements[i]).getPropertyValue('--on_load_animation')) {
+						elements[i].style.animation = "var(--on_load_animation)";
+					}
+				}
+				
+				//update scaling
+				OnResize();
+				
+				//activate links
+				document.getElementById('global_navbar_link_about').onclick = SwitchToAboutUs;
+				document.getElementById('global_navbar_link_devblogs').onclick = SwitchToDevBlogs;
+				document.getElementById('global_navbar_link_community').onclick = SwitchToCommunity;
+				document.getElementById('global_navbar_link_home').onclick = SwitchToMain;
+			}
+			
+			//fix background mask scaling (we cant use percentage values or the like for the masks because they also need to scroll)
+			function OnResize() {
+				var bg_layer_base_rect = document.getElementById('bg_layer_base').getBoundingClientRect();
+				var scalefactor = ((bg_layer_base_rect.width / 1920) * 0.5) + ((bg_layer_base_rect.height / 931) * 0.5);
+				document.body.style.setProperty("--mask_scale_factor", scalefactor);
+				if (scalefactor < 1) {
+					document.body.style.setProperty("--font_scale_factor", 0.1 + (scalefactor * 0.9));
+				} else {
+					document.body.style.setProperty("--font_scale_factor", 1);
+				}
+			}
+			addEventListener("resize", OnResize);
+			
+			//nav bar hover event
+			function Mouseover(event) {
+				var link_community = document.getElementById('global_navbar_link_community');
+				var link_devblogs = document.getElementById('global_navbar_link_devblogs');
+				var link_about = document.getElementById('global_navbar_link_about');
+				if (event.target == link_community || event.target == link_devblogs || event.target == link_about) {
+					//start hover
+					link_community.style.setProperty("color", "var(--color_off_white)");
+					link_devblogs.style.setProperty("color", "var(--color_off_white)");
+					link_about.style.setProperty("color", "var(--color_off_white)");
+					if (link_community != event.target && currentpage != "community") {
+						link_community.style.setProperty("color", "var(--color_dull_white)");
+					}
+					if (link_devblogs != event.target && currentpage != "devblogs" && currentpage != "devblogselect") {
+						link_devblogs.style.setProperty("color", "var(--color_dull_white)");
+					}
+					if (link_about != event.target && currentpage != "about") {
+						link_about.style.setProperty("color", "var(--color_dull_white)");
+					}
+				} else {
+					//end hover
+					link_community.style.setProperty("color", "var(--color_dull_white)");
+					link_devblogs.style.setProperty("color", "var(--color_dull_white)");
+					link_about.style.setProperty("color", "var(--color_dull_white)");
+					if (currentpage == "main") {
+						link_community.style.setProperty("color", "var(--color_off_white)");
+						link_devblogs.style.setProperty("color", "var(--color_off_white)");
+						link_about.style.setProperty("color", "var(--color_off_white)");
+					} else if (currentpage == "community") {
+						link_community.style.setProperty("color", "var(--color_off_white)");
+						link_devblogs.style.setProperty("color", "var(--color_dull_white)");
+						link_about.style.setProperty("color", "var(--color_dull_white)");
+					} else if (currentpage == "devblogs" || currentpage == "devblogselect") {
+						link_community.style.setProperty("color", "var(--color_dull_white)");
+						link_devblogs.style.setProperty("color", "var(--color_off_white)");
+						link_about.style.setProperty("color", "var(--color_dull_white)");
+					} else if (currentpage == "about") {
+						link_community.style.setProperty("color", "var(--color_dull_white)");
+						link_devblogs.style.setProperty("color", "var(--color_dull_white)");
+						link_about.style.setProperty("color", "var(--color_off_white)");
+					}
+					link_community.classList.remove("waitingfordebounce");
+					link_devblogs.classList.remove("waitingfordebounce");
+					link_about.classList.remove("waitingfordebounce");
+				}
+			}
+			addEventListener("mouseover", Mouseover);
+			
+			//transition to "about us" page
+			function SwitchToAboutUs() {
+				if (currentpage == "about") {return;}
+				currentpage = "about";
+				
+				document.getElementById('global_navbar_link_community').style.setProperty("color", "var(--color_dull_white)");
+				document.getElementById('global_navbar_link_devblogs').style.setProperty("color", "var(--color_dull_white)");
+				document.getElementById('global_navbar_link_about').style.setProperty("color", "var(--color_off_white)");
+				document.getElementById('global_navbar_link_community').classList.remove("active");
+				document.getElementById('global_navbar_link_devblogs').classList.remove("active");
+				document.getElementById('global_navbar_link_about').classList.add("active");
+				document.getElementById('global_navbar_link_about').classList.add("waitingfordebounce");
+				document.getElementById('global_navbar_link_home').classList.add("active");
+				document.getElementById('container_bg').classList.add("dull");
+			}
+			
+			//transition to "dev blogs" page
+			function SwitchToDevBlogs() {
+				if (currentpage == "devblogselect") {return;}
+				currentpage = "devblogselect";
+				
+				document.getElementById('global_navbar_link_community').style.setProperty("color", "var(--color_dull_white)");
+				document.getElementById('global_navbar_link_devblogs').style.setProperty("color", "var(--color_off_white)");
+				document.getElementById('global_navbar_link_about').style.setProperty("color", "var(--color_dull_white)");
+				document.getElementById('global_navbar_link_community').classList.remove("active");
+				document.getElementById('global_navbar_link_devblogs').classList.add("active");
+				document.getElementById('global_navbar_link_devblogs').classList.add("waitingfordebounce");
+				document.getElementById('global_navbar_link_about').classList.remove("active");
+				document.getElementById('global_navbar_link_home').classList.add("active");
+				document.getElementById('container_bg').classList.add("dull");
+			}
+			
+			//transition to "community" popup
+			function SwitchToCommunity() {
+				if (currentpage == "community") {return;}
+				currentpage = "community";
+				
+				document.getElementById('global_navbar_link_community').style.setProperty("color", "var(--color_off_white)");
+				document.getElementById('global_navbar_link_devblogs').style.setProperty("color", "var(--color_dull_white)");
+				document.getElementById('global_navbar_link_about').style.setProperty("color", "var(--color_dull_white)");
+				document.getElementById('global_navbar_link_community').classList.add("active");
+				document.getElementById('global_navbar_link_community').classList.add("waitingfordebounce");
+				document.getElementById('global_navbar_link_devblogs').classList.remove("active");
+				document.getElementById('global_navbar_link_about').classList.remove("active");
+			}
+			
+			//transition to home page
+			function SwitchToMain() {
+				if (currentpage == "main") {return;}
+				currentpage = "main"
+				
+				document.getElementById('global_navbar_link_community').style.setProperty("color", "var(--color_off_white)");
+				document.getElementById('global_navbar_link_devblogs').style.setProperty("color", "var(--color_off_white)");
+				document.getElementById('global_navbar_link_about').style.setProperty("color", "var(--color_off_white)");
+				document.getElementById('global_navbar_link_community').classList.remove("active");
+				document.getElementById('global_navbar_link_devblogs').classList.remove("active");
+				document.getElementById('global_navbar_link_about').classList.remove("active");
+				document.getElementById('global_navbar_link_home').classList.remove("active");
+				document.getElementById('container_bg').classList.remove("dull");
+			}
+			
+		</script>
+	</head>
+	<body onload="OnLoad()">
+		<div class="fullpage" id="base"></div>
+		
+		<!-- animated background -->
+		<div class="fullpage" id="container_bg">
+			<div class="fullpage background" id="bg_layer_base"></div>
+			<div class="fullpage background" id="bg_layer_fade_01"></div>
+			<div class="fullpage background" id="bg_layer_caustics_01"></div>
+			<div class="fullpage background" id="bg_layer_caustics_02"></div>
+			<div class="fullpage background" id="bg_layer_caustics_03"></div>
+			<div class="fullpage background" id="bg_layer_drips_01"></div>
+			<div class="fullpage background" id="bg_layer_volumetrics_01"></div>
+			<div class="fullpage background" id="bg_layer_volumetrics_02"></div>
+			<div class="fullpage background" id="bg_layer_volumetrics_03"></div>
+			<div class="fullpage background" id="bg_layer_fade_02"></div>
+			<div class="fullpage background" id="bg_layer_dimmer"></div>
+			<div class="fullpage background" id="bg_layer_loading">Loading page assets...</div>
+		</div>
+		
+		<!-- about us page -->
+		<div class="fullpage content disabled" id="container_about">
+			<article>
+				<h1>About The Project</h1>
+				<hr>
+				<p>
+					Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+				</p>
+				<h1>The Developers</h1>
+				<hr>
+				<p id="about_article_apply_note">Just me at the moment. Feel free to <a>apply</a> if you have skills that you feel might be useful.</p>
+			</article>
+		</div>
+		
+		<!-- global elements -->
+		<div class="fullpage content_top" id="container_global">
+			<ul id="global_navbar">
+				<li class="global_navbar_logo"><a id="global_navbar_link_home"><img id="global_logo" alt="Bioshock: Fall of Rapture"></a></li>
+				<li class="global_navbar_link"><a id="global_navbar_link_community">Community</a></li>
+				<li class="global_navbar_link"><a id="global_navbar_link_devblogs">Dev Blogs</a></li>
+				<li class="global_navbar_link"><a id="global_navbar_link_about">About Us</a></li>
+			</ul>
+		</div>
+	</body>
+</html>
